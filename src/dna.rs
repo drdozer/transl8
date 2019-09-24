@@ -7,6 +7,7 @@ pub fn complement(n: char) -> char {
         'c' => 'g',
         'g' => 'c',
         't' => 'a',
+        'n' => 'n',
         _ => panic!("Unexpected nucleotide character `{}'", n),
     }
 }
@@ -27,7 +28,7 @@ pub fn frame(s: &str, phase: usize) -> Vec<&str> {
 pub fn translate(codons: &Vec<&str>) -> String {
     codons
         .iter()
-        .map(|c| *(TRANSLATION_TABLE.get(c).unwrap()))
+        .map(|c| *(TRANSLATION_TABLE.get(c).unwrap_or(&"*")))
         .collect()
 }
 
