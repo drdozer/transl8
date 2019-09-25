@@ -21,10 +21,6 @@ mod seq;
 use seq::*;
 
 fn main() -> Result<(), io::Error> {
-    // todo - read a stream of fasta files
-    // todo - 6 frame translation of each entry
-    // todo - write all 6 out to the output stream
-    //
     // todo - toggle for
     //    single output per frame
     //    separate outupt broken by stop
@@ -34,9 +30,6 @@ fn main() -> Result<(), io::Error> {
     //
     // todo - render associated DNA sequences
     // todo - render coordinates of translated regions as GFF
-    //
-    // todo - command line opts to read file vs url vs stdin
-    // todo - command line opts to write to file vs stdout vs post to url
     //
     // todo - gzip support on input & output
 
