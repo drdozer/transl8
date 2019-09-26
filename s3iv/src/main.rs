@@ -71,20 +71,28 @@ fn main() -> Result<(), io::Error> {
 
     let fasta = FastaFormat::new();
 
-    let filter_n = if matches.is_present("polyN") {
-        seiv_n
+    let filter_n = |&fr| if matches.is_present("polyN") {
+        seiv_n(fr)
     } else {
-        accept
+        accept(fr)
     };
 
-    let filter_short = match matches.value_of("minLength") {
-        Some(m) => seiv_min(m.parse().unwrap()),
-        None => Box::new(accept::<&FastaRecord>)
+    let short = matches.value_of("minLength")
+        .iter()
+        .flat_map(|m| m.parse::<usize>().ok())
+        .next();
+    let filter_short = |fr : &FastaRecord| match short {
+        Some(m) => fr.seq.len() >= m,
+        None    => true
     };
 
-    let filter_long = match matches.value_of("maxLength") {
-        Some(x) => seiv_max(x.parse().unwrap()),
-        None => Box::new(accept::<&FastaRecord>)
+    let long = matches.value_of("maxLength")
+        .iter()
+        .flat_map(|m| m.parse::<usize>().ok())
+        .next();
+    let filter_long  = |fr : &FastaRecord| match long {
+        Some(x) => fr.seq.len() <= x,
+        None    => true
     };
 
     let filter = |fr| filter_n(fr) || filter_short(fr) || filter_long(fr);
@@ -92,18 +100,12 @@ fn main() -> Result<(), io::Error> {
     Ok(())
 }
 
-fn accept<T>(t: T) -> bool { true }
-fn reject<T>(t: T) -> bool { false }
+
+type FastaRecordPred = Box<dyn Fn(&FastaRecord) -> bool>;
+
+fn accept<T>(t: &T) -> bool { true }
 
 fn seiv_n(fasta: &FastaRecord) -> bool {
-    let allN = fasta.seq.chars().all(|c| c == 'n' || c == 'N');
-    !allN
-}
-
-fn seiv_min(l: usize) -> Box<dyn Fn(&FastaRecord) -> bool> {
-    Box::new(move |&fastaRecord| fastaRecord.seq.len() >= l)
-}
-
-fn seiv_max(l: usize) -> Box<dyn Fn(&FastaRecord) -> bool> {
-    Box::new(move |&fastaRecord| fastaRecord.seq.len() <= l)
+    let all_n = fasta.seq.chars().all(|c| c == 'n' || c == 'N');
+    !all_n
 }
