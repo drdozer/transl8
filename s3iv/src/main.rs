@@ -95,7 +95,7 @@ fn main() -> Result<(), io::Error> {
         None    => true
     };
 
-    let filter = |fr| filter_n(fr) || filter_short(fr) || filter_long(fr);
+    let filter = |&fr| filter_n(fr) || filter_short(fr) || filter_long(fr);
 
     Ok(())
 }
