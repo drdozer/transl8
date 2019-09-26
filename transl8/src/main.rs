@@ -1,24 +1,23 @@
-#[macro_use]
-extern crate lazy_static;
 
 use std::io::{
     self,
     BufRead,
-    BufReader,
     Write
 };
-use std::fs::File;
 
 extern crate clap;
-use clap::{Arg, App};
+use clap::{
+    Arg,
+    App,
+    crate_version,
+    crate_authors,
+};
 
-extern crate nom;
-
-mod dna;
-use dna::*;
-
-mod seq;
-use seq::*;
+use bio::{
+    self,
+    dna::*,
+    seq::*,
+};
 
 fn main() -> Result<(), io::Error> {
     // todo - toggle for
@@ -34,8 +33,8 @@ fn main() -> Result<(), io::Error> {
     // todo - gzip support on input & output
 
     let matches = App::new("transl8")
-        .version("0.1")
-        .author("Matthew Pocock <turingatemyhamster@gmail.com>")
+        .version(crate_version!())
+        .author(crate_authors!())
         .about("Performs 6-frame translation on DNA sequences")
         .arg(Arg::with_name("seqIn")
             .short("i")
@@ -51,23 +50,11 @@ fn main() -> Result<(), io::Error> {
             .help("Sequence output file. If not provided, defaults to STDOUT."))
         .get_matches();
 
-    let mut out: Box<dyn Write> = match matches.value_of("seqOut") {
-        None => Box::new(std::io::stdout()),
-        Some(seq_out) => Box::new(File::create(seq_out)?)
-    };
+    let mut out =
+        bio::writeToFileOrStdout(matches.value_of("seqOut"))?;
 
-    let ins: Vec<Box<dyn BufRead>> = match matches.values_of("seqIn") {
-        Some(seq_ins) =>
-            seq_ins
-                .map(|i| {
-                    let b: Box<dyn BufRead> = Box::new(BufReader::new(File::open(i).unwrap()));
-                    b
-                })
-                .collect(),
-        None =>
-            vec![Box::new(BufReader::new(std::io::stdin()))],
-    };
-
+    let ins: Vec<Box<dyn BufRead>> =
+        bio::readFromFilesOrStin(matches.values_of("seqIn"))?;
 
     let fasta = FastaFormat::new();
     for mut in_reader in ins {

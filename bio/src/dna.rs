@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 
 pub fn complement(n: char) -> char {
