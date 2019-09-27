@@ -60,10 +60,10 @@ fn main() -> Result<(), io::Error> {
 
 
     let mut out =
-        bio::writeToFileOrStdout(matches.value_of("seqOut"))?;
+        bio::write_to_file_or_stdout(matches.value_of("seqOut"))?;
 
     let ins: Vec<Box<dyn BufRead>> =
-        bio::readFromFilesOrStin(matches.values_of("seqIn"))?;
+        bio::read_from_files_or_stin(matches.values_of("seqIn"))?;
 
     // true if the sequence is all N, false otherwise
     fn seiv_n(fasta: &FastaRecord) -> bool {

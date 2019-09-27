@@ -1,5 +1,5 @@
 [package]
-name = "s3iv"
+name = "seiv3"
 version = "0.1.0"
 authors = ["Matthew Pocock <turingatemyhamster@gmail.com>"]
 edition = "2018"

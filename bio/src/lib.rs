@@ -14,7 +14,7 @@ use std::fs::File;
 pub mod dna;
 pub mod seq;
 
-pub fn writeToFileOrStdout(out: Option<&str>) -> io::Result<Box<dyn Write>> {
+pub fn write_to_file_or_stdout(out: Option<&str>) -> io::Result<Box<dyn Write>> {
     let writer: Box<dyn Write> = match out {
        None => Box::new(std::io::stdout()),
        Some(seq_out) => Box::new(File::create(seq_out)?)
@@ -22,7 +22,7 @@ pub fn writeToFileOrStdout(out: Option<&str>) -> io::Result<Box<dyn Write>> {
     Ok(writer)
 }
 
-pub fn readFromFilesOrStin<'a, I>(ins: Option<I>) -> io::Result<Vec<Box<dyn BufRead>>>
+pub fn read_from_files_or_stin<'a, I>(ins: Option<I>) -> io::Result<Vec<Box<dyn BufRead>>>
 where
     I: Iterator<Item = &'a str>
 {
