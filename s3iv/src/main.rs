@@ -2,10 +2,7 @@
 use std::io::{
     self,
     BufRead,
-    BufReader,
-    Write
 };
-use std::fs::File;
 
 extern crate clap;
 use clap::{
@@ -16,7 +13,6 @@ use clap::{
 };
 
 use bio::{
-    dna::*,
     seq::*,
 };
 
@@ -69,43 +65,56 @@ fn main() -> Result<(), io::Error> {
     let ins: Vec<Box<dyn BufRead>> =
         bio::readFromFilesOrStin(matches.values_of("seqIn"))?;
 
-    let fasta = FastaFormat::new();
+    // true if the sequence is all N, false otherwise
+    fn seiv_n(fasta: &FastaRecord) -> bool {
+        fasta.seq.chars().all(|c| c == 'n' || c == 'N')
+    }
+    let filter_n = |fr: &FastaRecord| (matches.is_present("polyN") &&
+        seiv_n(fr));
 
-    let filter_n = |&fr| if matches.is_present("polyN") {
-        seiv_n(fr)
-    } else {
-        accept(fr)
-    };
-
+    // true if the sequence is too short
     let short = matches.value_of("minLength")
         .iter()
         .flat_map(|m| m.parse::<usize>().ok())
         .next();
     let filter_short = |fr : &FastaRecord| match short {
-        Some(m) => fr.seq.len() >= m,
-        None    => true
+        Some(m) => fr.seq.len() < m,
+        None    => false
     };
 
+    // true if the sequence is too long
     let long = matches.value_of("maxLength")
         .iter()
         .flat_map(|m| m.parse::<usize>().ok())
         .next();
     let filter_long  = |fr : &FastaRecord| match long {
-        Some(x) => fr.seq.len() <= x,
-        None    => true
+        Some(x) => fr.seq.len() > x,
+        None    => false
     };
 
-    let filter = |&fr| filter_n(fr) || filter_short(fr) || filter_long(fr);
+    let reject_fasta = |fr: &FastaRecord| {
+        let is_n = filter_n(&fr);
+        let is_short = filter_short(&fr);
+        let is_long = filter_long(&fr);
+        is_n || is_short || is_long
+    };
+
+    let fasta = FastaFormat::new();
+    for mut in_reader in ins {
+        let mut seq_txt = String::new();
+        in_reader.read_to_string(&mut seq_txt)?;
+        match parse_fastas(&seq_txt) {
+            Ok((_, in_seqs)) => {
+                 /* without explicit lambda, fr became &&fr */
+                let filtered = in_seqs.iter().filter(|fr| !reject_fasta(*fr));
+                for in_seq in filtered {
+                    in_seq.write(&fasta, &mut out)?;
+                }
+            },
+            Err(e) => println!("Error parsing fasta input:\n{:#?}\n", e)
+        }
+    }
 
     Ok(())
 }
 
-
-type FastaRecordPred = Box<dyn Fn(&FastaRecord) -> bool>;
-
-fn accept<T>(t: &T) -> bool { true }
-
-fn seiv_n(fasta: &FastaRecord) -> bool {
-    let all_n = fasta.seq.chars().all(|c| c == 'n' || c == 'N');
-    !all_n
-}
