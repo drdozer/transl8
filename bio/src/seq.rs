@@ -66,8 +66,7 @@ impl FastaRecord {
     let ll = format.line_length;
 
     write!(out, ">")?;
-    write!(out, "{}", self.descr_line)?;
-    write!(out, "\n")?;
+    writeln!(out, "{}", self.descr_line)?;
 
     let l = self.seq.len();
     //let overhang = l % ll;
@@ -75,11 +74,10 @@ impl FastaRecord {
     for o in (0..l).step_by(ll) {
       let e = o + ll;
       let r = if e > l { l } else { e };
-      write!(out, "{}", &self.seq[o..r])?;
-      write!(out, "\n")?;
+      writeln!(out, "{}", &self.seq[o..r])?;
     }
 
-    Ok({})
+    Ok(())
   }
 
 }
@@ -156,7 +154,7 @@ pub fn parse_fastas(input: &str) -> IResult<&str, Vec<FastaRecord>> {
   many0(parse_fasta)(input)
 }
 
-
+#[derive(Default)]
 pub struct FastaFormat {
   pub line_length: usize,
 }

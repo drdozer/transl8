@@ -63,7 +63,7 @@ fn main() -> Result<(), io::Error> {
         match parse_fastas(&seq_txt) {
             Ok((_, in_seqs)) => for (i, in_seq) in in_seqs.iter().enumerate() {
                 let fd = FastaDescription::read(&in_seq.descr_line);
-                write_6_phases(&fasta, &fd.identifier.unwrap_or(i.to_string()), &in_seq.seq, &mut out)?;
+                write_6_phases(&fasta, &fd.identifier.unwrap_or_else(|| i.to_string()), &in_seq.seq, &mut out)?;
             },
             Err(e) => println!("Error parsing fasta input:\n{:#?}\n", e)
         }
