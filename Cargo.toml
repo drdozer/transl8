@@ -3,6 +3,7 @@
 members = [
     "bio",
     "chunks",
+    "chunk1t",
     "seiv3",
     "transl8",
 ]

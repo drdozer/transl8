@@ -16,13 +16,15 @@ use bio::{
     seq::*,
 };
 
+use chunks;
+
 fn main() -> Result<(), io::Error> {
 
     let matches = App::new("s3iv")
         .version(crate_version!())
         .author(crate_authors!())
         .about("Seivs (filters) fasta files")
-        .arg(Arg::with_name(""))
+//        .arg(Arg::with_name(""))
         .arg(Arg::with_name("seqIn")
             .short("i")
             .long("seqIn")
@@ -60,10 +62,10 @@ fn main() -> Result<(), io::Error> {
 
 
     let mut out =
-        bio::write_to_file_or_stdout(matches.value_of("seqOut"))?;
+        chunks::write_to_file_or_stdout(matches.value_of("seqOut"))?;
 
     let ins: Vec<Box<dyn BufRead>> =
-        bio::read_from_files_or_stin(matches.values_of("seqIn"))?;
+        chunks::read_from_files_or_stin(matches.values_of("seqIn"))?;
 
     // true if the sequence is all N, false otherwise
     fn seiv_n(fasta: &FastaRecord) -> bool {

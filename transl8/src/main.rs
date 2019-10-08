@@ -14,10 +14,11 @@ use clap::{
 };
 
 use bio::{
-    self,
     dna::*,
     seq::*,
 };
+
+use chunks;
 
 fn main() -> Result<(), io::Error> {
     // todo - toggle for
@@ -51,10 +52,10 @@ fn main() -> Result<(), io::Error> {
         .get_matches();
 
     let mut out =
-        bio::write_to_file_or_stdout(matches.value_of("seqOut"))?;
+        chunks::write_to_file_or_stdout(matches.value_of("seqOut"))?;
 
     let ins: Vec<Box<dyn BufRead>> =
-        bio::read_from_files_or_stin(matches.values_of("seqIn"))?;
+        chunks::read_from_files_or_stin(matches.values_of("seqIn"))?;
 
     let fasta = FastaFormat::new();
     for mut in_reader in ins {
