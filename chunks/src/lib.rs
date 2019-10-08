@@ -96,8 +96,8 @@ where
                             self.done = true;
                             return None;
                         }
-                        Ok(l) => { 
-                            // println!("Extended buffer by {} bytes", l);
+                        Ok(_len) => { 
+                            // println!("Extended buffer by {} bytes", len);
                             continue
                         }
                         Err(e) => {
@@ -106,7 +106,7 @@ where
                         }
                     }
                 } else {
-                    println!("Using existing buffer from: {} searched: {} length: {}", self.from, self.searched, self.buf.len());
+                    //println!("Using existing buffer from: {} searched: {} length: {}", self.from, self.searched, self.buf.len());
                     match first_index_of(self.sentinel, &self.buf[self.searched..]) {
                         None => {
                             let cmp = compact_buf(self.from, &mut self.buf);
@@ -117,7 +117,7 @@ where
                                     self.done = true;
                                     return Some(Ok(self.buf[..].to_vec()));
                                 }
-                                Ok(_) => {
+                                Ok(_len) => {
                                     self.from = 0;
                                     self.searched -= cmp;
                                     continue;
@@ -140,7 +140,7 @@ where
                             let hit = &self.buf[self.from..hit_end];
                             self.from = hit_end;
                             self.searched = sentinel_end;
-                            if hit.len() > 0  { return Some(Ok(hit.to_vec())) }
+                            if !hit.is_empty()  { return Some(Ok(hit.to_vec())) }
                         }
                     }
 

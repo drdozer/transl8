@@ -28,7 +28,7 @@ fn main() -> Result<(), io::Error> {
         .arg(Arg::with_name("in")
             .short("i")
             .long("in")
-            .multiple(true)
+            .multiple(false)
             .takes_value(true)
             .help("Input file. If not provided, defaults to STDIN."))
         .arg(Arg::with_name("commands")
@@ -46,19 +46,40 @@ fn main() -> Result<(), io::Error> {
         }
     };
 
-    //let commands = matches.values_of("commands");
+    let commands = matches.values_of("commands");
+    let mut chunk_handler: Box<dyn FnMut(&[u8]) -> ()> = match commands {
+        None => Box::new(print_chunk),
+        Some(mut cs) => {
+            use std::process::*;
+            use std::io::Write;
+
+            let mut cmd = Command::new(cs.next().unwrap());
+
+            cmd.args(cs)
+                .stdin(Stdio::piped());
+
+            let handle = move |chunk: &[u8]| {
+                let mut child = cmd.spawn().expect("Chunk command failed");
+                child.stdin.as_mut().unwrap().write_all(chunk).expect("Failed to write to child process stdin");
+                let ecode = child.wait().expect("Failed to wait on a child");
+                assert!(ecode.success());
+            };
+
+            Box::new(handle)
+        }
+    };
 
     for in_reader in ins {
         for chunk in chunks::chunks(in_reader, &delim) {
-            print_chunk(chunk);
+            chunk_handler(&chunk.unwrap());
         }
     }
 
     Ok(())
 }
 
-fn print_chunk(chunk: Result<Vec<u8>, std::io::Error>) {
-    println!("Chunk starting <<<");
-    println!("{}", std::str::from_utf8(&chunk.unwrap()[..]).unwrap().trim());
-    println!("chunk ending >>>")
+fn print_chunk(chunk: &[u8]) {
+    println!("<<<");
+    println!("{}", std::str::from_utf8(chunk).unwrap().trim());
+    println!(">>>")
 }
