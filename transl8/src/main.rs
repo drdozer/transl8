@@ -15,7 +15,7 @@ use clap::{
 
 use bio::{
     dna::*,
-    seq::*,
+    seq::fasta::*,
 };
 
 use chunks;

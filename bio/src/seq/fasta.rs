@@ -170,6 +170,7 @@ impl FastaFormat {
 }
 
 
+
 #[cfg(test)]
 mod tests {
 

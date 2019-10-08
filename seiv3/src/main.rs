@@ -12,9 +12,7 @@ use clap::{
     crate_authors,
 };
 
-use bio::{
-    seq::*,
-};
+use bio::seq::fasta::*;
 
 use chunks;
 
