@@ -12,6 +12,7 @@ use nom::{
   bytes::complete::{
     tag,
     take_while_m_n,
+    take_while,
     take_while1,
   },
   character::{
@@ -21,12 +22,19 @@ use nom::{
     }
   },
   combinator::{ 
+    // cut,
     map,
     map_res,
     opt,
     verify,
     },
+  error::{
+    ErrorKind,
+    ParseError,
+    VerboseErrorKind,
+  },
   multi::{
+    // many1,
     separated_list,
   },
   sequence::{
@@ -34,17 +42,29 @@ use nom::{
   },
 };
 
+pub trait Nommed<'a, E> where Self: Sized {
+  fn nom(input: &'a str) -> IResult<&'a str, Self, E>;
+}
 
+impl <'a, E : ParseError<&'a str>> Nommed<'a, E> for u32 {
+  fn nom(input: &'a str) -> IResult<&str, u32, E> {
+    map_res(digit1, |d: &'a str| d.parse::<u32>())(input)
+  }
+}
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct FeatureTable {
   features: Vec<FeatureRecord>
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct FeatureRecord {
   key: String,
   location: LocOp,
   qualifiers: Vec<Qualifier>
 }
+
+
 
 /// An ID that's valid within the feature table.
 ///
@@ -52,10 +72,12 @@ pub struct FeatureRecord {
 ///   * At least one letter
 ///   * Upper case, lower case letters
 ///   * Numbers 0..9
+///   * Underscore (_)
 ///   * Hyphen (-)
 ///   * Single quote (')
 ///   * Asterisk (*)
 /// The maximum length is 20 characters.
+#[derive(Debug, PartialEq, Eq)]
 pub struct FtString(String);
 
 // litle utility for ranges.
@@ -63,19 +85,20 @@ pub struct FtString(String);
 // Note: couldn't use 'a'..='b' because this is an iterator, so doesn't
 // implement `Copy`.
 #[derive(Clone, Copy)]
-struct Range<T>(T, T);
-impl <T : PartialOrd> Range<T> {
+struct Interval<T>(T, T);
+impl <T : PartialOrd> Interval<T> {
   fn contains(&self, e: &T) -> bool {
     self.0 <= *e &&
     *e <= self.1
   }
 }
 
-pub fn parse_ft_string(input: &str) -> IResult<&str, FtString> {
-  let uc = Range('A', 'Z');
-  let lc = Range('a', 'z');
-  let di = Range('0', '9');
-  let misc = "-'*";
+impl <E : ParseError<&str>> Nommed<E> for FtString {
+  fn nom(input: &str) -> IResult<&str, FtString, E> {
+  let uc = Interval('A', 'Z');
+  let lc = Interval('a', 'z');
+  let di = Interval('0', '9');
+  let misc = "_-'*";
 
   let ft_char = {
     move |c: char| 
@@ -100,9 +123,60 @@ pub fn parse_ft_string(input: &str) -> IResult<&str, FtString> {
   )(input)
 }
 
+}
 
 
-pub struct Qualifier();
+#[derive(Debug, PartialEq, Eq)]
+pub struct Qualifier {
+  name: FtString,
+  value: Option<QualifierValue>
+}
+
+impl <E : ParseError<&str>> Nommed<E> for Qualifier {
+fn nom(input: &str) -> IResult<&str, Qualifier, E> {
+  let parse_name = map(tuple((tag("/"), FtString::nom)), |(_, n)| n);
+
+  let parse_value = map(tuple((tag("="), QualifierValue::nom)), |(_, v)| v);
+
+  map(
+    tuple((parse_name, opt(parse_value))),
+    |(name, value)| Qualifier{ name, value }
+  )(input)
+}
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum QualifierValue {
+  QuotedText(String),
+  VocabularyTerm(FtString),
+  ReferenceNumber(u32),
+}
+
+impl <E : ParseError<&str>> Nommed<E> for QualifierValue{
+
+fn nom(input: &str) -> IResult<&str, QualifierValue, E> {
+  let parse_quoted_text =
+    map(
+      tuple((tag("\""), take_while(|c| c != '"'), tag("\""))),
+      |(_, v, _): (&str, &str, &str)| QualifierValue::QuotedText(v.to_string()));
+
+  let parse_vocabulary_term = 
+    map(
+      FtString::nom,
+      QualifierValue::VocabularyTerm);
+
+  let parse_reference_number = 
+    map(
+      tuple((tag("["), u32::nom, tag("]"))),
+      |(_, d, _)| QualifierValue::ReferenceNumber(d));
+  
+  alt((
+    parse_quoted_text,
+    parse_vocabulary_term,
+    parse_reference_number
+  ))(input)
+}
+}
 
 //
 //
@@ -112,17 +186,15 @@ pub struct Qualifier();
 //
 //
 
-fn parse_u32(input: &str) -> IResult<&str, u32> {
-  map_res(digit1, |d: &str| d.parse::<u32>())(input)
-}
-
 
 /// A point within a sequence, representing a specific nucleotide. Counts from 1.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Point(u32);
 
-pub fn parse_point(input: &str) -> IResult<&str, Point> {
-  map(parse_u32, Point)(input)
+impl <E : ParseError<&str>> Nommed<E> for Point {
+  fn nom(input: &str) -> IResult<&str, Point, E> {
+    map(u32::nom, Point)(input)
+  }
 }
 
 
@@ -134,16 +206,19 @@ pub fn parse_point(input: &str) -> IResult<&str, Point> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Between(u32, u32);
 
-pub fn parse_between(input: &str) -> IResult<&str, Between> {
+impl <E : ParseError<&str>> Nommed<E> for Between {
+fn nom(input: &str) -> IResult<&str, Between, E> {
   map(
     tuple((
-      parse_u32,
+      u32::nom,
       tag("^"),
-      parse_u32
+      u32::nom
     )),
     |(from, _, to)| Between(from, to)
   )(input)
 }
+}
+
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Position {
@@ -151,11 +226,13 @@ pub enum Position {
   Between(Between)
 }
 
-pub fn parse_position(input: &str) -> IResult<&str, Position> {
+impl <E : ParseError<&str>> Nommed<E> for Position {
+fn nom(input: &str) -> IResult<&str, Position, E> {
   alt((
-    map(parse_between, Position::Between),
-    map(parse_point, Position::Point)
+    map(Between::nom, Position::Between),
+    map(Point::nom, Position::Point)
   ))(input)
+}
 }
 
 
@@ -177,14 +254,15 @@ impl Local {
   }
 }
 
-pub fn parse_local(input: &str) -> IResult<&str, Local> {
+impl <E : ParseError<&str>> Nommed<E> for Local {
+fn nom(input: &str) -> IResult<&str, Local, E> {
   let parse_within = map(
-    tuple((parse_point, tag("."), parse_point)),
+    tuple((Point::nom, tag("."), Point::nom)),
     |(from, _, to)| Local::Within { from, to });
 
   let parse_span = map(
     tuple((
-      opt(tag("<")), parse_position, tag(".."), opt(tag(">")), parse_position)),
+      opt(tag("<")), Position::nom, tag(".."), opt(tag(">")), Position::nom)),
     |(before_from, from, _, after_to, to)| Local::Span {
       from,
       to,
@@ -193,11 +271,12 @@ pub fn parse_local(input: &str) -> IResult<&str, Local> {
   );
 
   alt((
-    map(parse_between, Local::Between),
+    map(Between::nom, Local::Between),
     parse_within,
     parse_span,
-    map(parse_point, Local::Point), // must do this last as it's a prefix of the others
+    map(Point::nom, Local::Point), // must do this last as it's a prefix of the others
   ))(input)
+}
 }
 
 
@@ -207,7 +286,8 @@ pub enum Loc {
   Local(Local)
 }
 
-pub fn parse_loc(input: &str) -> IResult<&str, Loc> {
+impl <E : ParseError<&str>> Nommed<E> for Loc {
+fn nom(input: &str) -> IResult<&str, Loc, E> {
   let parse_accession = take_while1(|c| {
     let b = c as u8;
     is_alphanumeric(b) || b == b'.'
@@ -215,11 +295,12 @@ pub fn parse_loc(input: &str) -> IResult<&str, Loc> {
 
   alt((
     map(
-      tuple((parse_accession, tag(":"), parse_local)),
+      tuple((parse_accession, tag(":"), Local::nom)),
       |(within, _, at)| Loc::Remote { within: within.to_string(), at }
     ),
-    map(parse_local, Loc::Local)
+    map(Local::nom, Loc::Local)
   ))(input)
+}
 }
 
 
@@ -232,14 +313,15 @@ pub enum LocOp {
   Order(Vec<LocOp>)
 }
 
-pub fn parse_locOp(input: &str) -> IResult<&str, LocOp> {
-  let parse_locOps = |i| separated_list(tag(","), parse_locOp)(i);
+impl <E : ParseError<&str>> Nommed<E> for LocOp {
+fn nom(input: &str) -> IResult<&str, LocOp, E> {
+  let parse_locOps = |i| separated_list(tag(","), LocOp::nom)(i);
 
   let parse_complement = 
     map(
       tuple((
         tag("complement("),
-        parse_locOp,
+        LocOp::nom,
         tag(")")
       )),
       |(_, loc, _)| loc
@@ -249,7 +331,7 @@ pub fn parse_locOp(input: &str) -> IResult<&str, LocOp> {
     map(
       tuple((
         tag("join("),
-        parse_locOps,
+        separated_list(tag(", "), LocOp::nom),
         tag(")")
       )),
       |(_, locs, _)| locs
@@ -259,18 +341,19 @@ pub fn parse_locOp(input: &str) -> IResult<&str, LocOp> {
     map(
       tuple((
         tag("order("),
-        parse_locOps,
+        separated_list(tag(", "), LocOp::nom),
         tag(")")
       )),
       |(_, locs, _)| locs
     );
 
   alt((
-    map(parse_loc, LocOp::Loc),
+    map(Loc::nom, LocOp::Loc),
     map(parse_complement, |loc| LocOp::Complement(Box::new(loc))),
     map(parse_join, LocOp::Join),
     map(parse_order, LocOp::Order)
   ))(input)
+}
 }
 
 #[cfg(test)]
@@ -278,22 +361,60 @@ mod tests {
 
   use super::*;
 
+  fn assert_nom_to_expected<T>() -> impl Fn(&str, T) -> ()
+    where
+      T: Nommed + std::fmt::Debug + PartialEq
+  {
+    move |input: &str, expected: T| {
+      match T::nom(input) {
+        Ok((rem, ref res)) if !rem.is_empty() => panic!("Non-empty remaining input {}, parsed out {:?}", rem, res),
+        Ok((_, res)) => assert_eq!(res, expected, "Got result {:?} but expected {:?}", res, expected),
+        e => panic!("Problem parsing {} with error: {:?}", input, e)
+      }
+    }
+  }
+
+  #[test]
+  fn test_parse_qualifiers_from_spec() {
+
+    let expect = assert_nom_to_expected::<Qualifier>();
+
+    expect(
+      "/pseudo",
+      Qualifier {
+        name: FtString("pseudo".to_string()),
+        value: None });
+ 
+    expect(
+      "/citation=[1]",
+      Qualifier {
+        name: FtString("citation".to_string()),
+        value: Some(QualifierValue::ReferenceNumber(1)) });
+ 
+    expect(
+      "/gene=\"arsC\"",
+      Qualifier {
+        name: FtString("gene".to_string()),
+        value: Some(QualifierValue::QuotedText("arsC".to_string()))});
+
+    expect(
+      "/rpt_type=DISPERSED",
+      Qualifier {
+        name: FtString("rpt_type".to_string()),
+        value: Some(QualifierValue::VocabularyTerm(FtString("DISPERSED".to_string())))});
+  }
+
   #[test]
   fn test_parse_locations_from_spec() {
-    let parse_locOp = |input| {
-      match super::parse_locOp(input) {
-        Ok((rem, ref res)) if !rem.is_empty() => panic!("Non-empty remaining input {}, parsed out {:?}", rem, res),
-        Ok((_, res)) => res,
-        e => panic!("Problem parsing: {:?}", e)
-      }
-    };
 
-    assert_eq!(
-      parse_locOp("467"),
+    let expect = assert_nom_to_expected::<LocOp>();
+
+    expect(
+      "467",
       LocOp::Loc(Loc::Local(Local::Point(Point(467)))));
 
-    assert_eq!(
-      parse_locOp("340..565"),
+    expect(
+      "340..565",
       LocOp::Loc(Loc::Local(Local::Span {
         from: Position::Point(Point(340)),
         to: Position::Point(Point(565)),
@@ -301,8 +422,8 @@ mod tests {
         after_to: false
         })));
 
-    assert_eq!(
-      parse_locOp("<345..500"),
+    expect(
+      "<345..500",
       LocOp::Loc(Loc::Local(Local::Span {
         from: Position::Point(Point(345)),
         to: Position::Point(Point(500)),
@@ -310,8 +431,8 @@ mod tests {
         after_to: false
       })));
     
-    assert_eq!(
-      parse_locOp("<1..888"),
+    expect(
+      "<1..888",
       LocOp::Loc(Loc::Local(Local::Span {
         from: Position::Point(Point(1)),
         to: Position::Point(Point(888)),
@@ -319,9 +440,8 @@ mod tests {
         after_to: false
       })));
 
-    
-    assert_eq!(
-      parse_locOp("1..>888"),
+    expect(
+      "1..>888",
       LocOp::Loc(Loc::Local(Local::Span {
         from: Position::Point(Point(1)),
         to: Position::Point(Point(888)),
@@ -329,44 +449,44 @@ mod tests {
         after_to: true
       })));
 
-    assert_eq!(
-      parse_locOp("102.110"),
+    expect(
+      "102.110",
       LocOp::Loc(Loc::Local(Local::Within { from: Point(102), to: Point(110) })));
 
-    assert_eq!(
-      parse_locOp("123^124"),
+    expect(
+      "123^124",
       LocOp::Loc(Loc::Local(Local::Between(Between(123, 124)))));
     
-    assert_eq!(
-      parse_locOp("join(12..78,134..202)"),
+    expect(
+      "join(12..78,134..202)",
       LocOp::Join(vec![
         LocOp::Loc(Loc::Local(Local::span(12, 78))),
         LocOp::Loc(Loc::Local(Local::span(134, 202)))]));
 
-    assert_eq!(
-      parse_locOp("complement(34..126)"),
+    expect(
+      "complement(34..126)",
       LocOp::Complement(Box::new(LocOp::Loc(Loc::Local(Local::span(34, 126))))));
     
-    assert_eq!(
-      parse_locOp("complement(join(2691..4571,4918..5163))"),
+    expect(
+      "complement(join(2691..4571,4918..5163))",
       LocOp::Complement(Box::new(LocOp::Join(vec![
         LocOp::Loc(Loc::Local(Local::span(2691, 4571))),
         LocOp::Loc(Loc::Local(Local::span(4918, 5163)))
       ]))));
     
-    assert_eq!(
-      parse_locOp("join(complement(4918..5163),complement(2691..4571))"),
+    expect(
+      "join(complement(4918..5163),complement(2691..4571))",
       LocOp::Join(vec![
         LocOp::Complement(Box::new(LocOp::Loc(Loc::Local(Local::span(4918, 5163))))),
         LocOp::Complement(Box::new(LocOp::Loc(Loc::Local(Local::span(2691, 4571)))))
       ]));
 
-    assert_eq!(
-      parse_locOp("J00194.1:100..202"),
+    expect(
+      "J00194.1:100..202",
       LocOp::Loc(Loc::Remote{ within: String::from("J00194.1"), at: Local::span(100, 202) }));
     
-    assert_eq!(
-      parse_locOp("join(1..100,J00194.1:100..202)"),
+    expect(
+      "join(1..100,J00194.1:100..202)",
       LocOp::Join(vec![
         LocOp::Loc(Loc::Local(Local::span(1, 100))),
         LocOp::Loc(Loc::Remote { within: String::from("J00194.1"), at: Local::span(100, 202)})
