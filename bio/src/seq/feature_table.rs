@@ -17,21 +17,15 @@ use nom::{
   },
   character::{
     is_alphanumeric,
-    complete::{ 
-      digit1,
-    }
   },
   combinator::{ 
-    // cut,
+    cut,
     map,
-    map_res,
     opt,
     verify,
     },
   error::{
-    ErrorKind,
     ParseError,
-    VerboseErrorKind,
   },
   multi::{
     // many1,
@@ -42,15 +36,8 @@ use nom::{
   },
 };
 
-pub trait Nommed<'a, E> where Self: Sized {
-  fn nom(input: &'a str) -> IResult<&'a str, Self, E>;
-}
+use super::parser::Nommed;
 
-impl <'a, E : ParseError<&'a str>> Nommed<'a, E> for u32 {
-  fn nom(input: &'a str) -> IResult<&str, u32, E> {
-    map_res(digit1, |d: &'a str| d.parse::<u32>())(input)
-  }
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FeatureTable {
@@ -62,6 +49,12 @@ pub struct FeatureRecord {
   key: String,
   location: LocOp,
   qualifiers: Vec<Qualifier>
+}
+
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for FeatureRecord {
+  fn nom(input: &'a str) -> IResult<&'a str, FeatureRecord, E> {
+
+  }
 }
 
 
@@ -93,8 +86,8 @@ impl <T : PartialOrd> Interval<T> {
   }
 }
 
-impl <E : ParseError<&str>> Nommed<E> for FtString {
-  fn nom(input: &str) -> IResult<&str, FtString, E> {
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for FtString {
+  fn nom(input: &'a str) -> IResult<&'a str, FtString, E> {
   let uc = Interval('A', 'Z');
   let lc = Interval('a', 'z');
   let di = Interval('0', '9');
@@ -132,8 +125,8 @@ pub struct Qualifier {
   value: Option<QualifierValue>
 }
 
-impl <E : ParseError<&str>> Nommed<E> for Qualifier {
-fn nom(input: &str) -> IResult<&str, Qualifier, E> {
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for Qualifier {
+fn nom(input: &'a str) -> IResult<&'a str, Qualifier, E> {
   let parse_name = map(tuple((tag("/"), FtString::nom)), |(_, n)| n);
 
   let parse_value = map(tuple((tag("="), QualifierValue::nom)), |(_, v)| v);
@@ -152,9 +145,9 @@ pub enum QualifierValue {
   ReferenceNumber(u32),
 }
 
-impl <E : ParseError<&str>> Nommed<E> for QualifierValue{
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for QualifierValue{
 
-fn nom(input: &str) -> IResult<&str, QualifierValue, E> {
+fn nom(input: &'a str) -> IResult<&'a str, QualifierValue, E> {
   let parse_quoted_text =
     map(
       tuple((tag("\""), take_while(|c| c != '"'), tag("\""))),
@@ -191,8 +184,8 @@ fn nom(input: &str) -> IResult<&str, QualifierValue, E> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Point(u32);
 
-impl <E : ParseError<&str>> Nommed<E> for Point {
-  fn nom(input: &str) -> IResult<&str, Point, E> {
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for Point {
+  fn nom(input: &'a str) -> IResult<&'a str, Point, E> {
     map(u32::nom, Point)(input)
   }
 }
@@ -206,8 +199,8 @@ impl <E : ParseError<&str>> Nommed<E> for Point {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Between(u32, u32);
 
-impl <E : ParseError<&str>> Nommed<E> for Between {
-fn nom(input: &str) -> IResult<&str, Between, E> {
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for Between {
+fn nom(input: &'a str) -> IResult<&'a str, Between, E> {
   map(
     tuple((
       u32::nom,
@@ -226,8 +219,8 @@ pub enum Position {
   Between(Between)
 }
 
-impl <E : ParseError<&str>> Nommed<E> for Position {
-fn nom(input: &str) -> IResult<&str, Position, E> {
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for Position {
+fn nom(input: &'a str) -> IResult<&'a str, Position, E> {
   alt((
     map(Between::nom, Position::Between),
     map(Point::nom, Position::Point)
@@ -254,8 +247,8 @@ impl Local {
   }
 }
 
-impl <E : ParseError<&str>> Nommed<E> for Local {
-fn nom(input: &str) -> IResult<&str, Local, E> {
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for Local {
+fn nom(input: &'a str) -> IResult<&'a str, Local, E> {
   let parse_within = map(
     tuple((Point::nom, tag("."), Point::nom)),
     |(from, _, to)| Local::Within { from, to });
@@ -286,8 +279,8 @@ pub enum Loc {
   Local(Local)
 }
 
-impl <E : ParseError<&str>> Nommed<E> for Loc {
-fn nom(input: &str) -> IResult<&str, Loc, E> {
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for Loc {
+fn nom(input: &'a str) -> IResult<&'a str, Loc, E> {
   let parse_accession = take_while1(|c| {
     let b = c as u8;
     is_alphanumeric(b) || b == b'.'
@@ -313,15 +306,14 @@ pub enum LocOp {
   Order(Vec<LocOp>)
 }
 
-impl <E : ParseError<&str>> Nommed<E> for LocOp {
-fn nom(input: &str) -> IResult<&str, LocOp, E> {
-  let parse_locOps = |i| separated_list(tag(","), LocOp::nom)(i);
-
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for LocOp {
+fn nom(input: &'a str) -> IResult<&'a str, LocOp, E> {
+  
   let parse_complement = 
     map(
       tuple((
         tag("complement("),
-        LocOp::nom,
+        cut(LocOp::nom),
         tag(")")
       )),
       |(_, loc, _)| loc
@@ -331,7 +323,7 @@ fn nom(input: &str) -> IResult<&str, LocOp, E> {
     map(
       tuple((
         tag("join("),
-        separated_list(tag(", "), LocOp::nom),
+        cut(separated_list(tag(","), LocOp::nom)),
         tag(")")
       )),
       |(_, locs, _)| locs
@@ -341,7 +333,7 @@ fn nom(input: &str) -> IResult<&str, LocOp, E> {
     map(
       tuple((
         tag("order("),
-        separated_list(tag(", "), LocOp::nom),
+        cut(separated_list(tag(","), LocOp::nom)),
         tag(")")
       )),
       |(_, locs, _)| locs
@@ -360,18 +352,43 @@ fn nom(input: &str) -> IResult<&str, LocOp, E> {
 mod tests {
 
   use super::*;
+  use nom::error::{
+    convert_error,
+    VerboseError,
+  };
 
-  fn assert_nom_to_expected<T>() -> impl Fn(&str, T) -> ()
+  fn assert_nom_to_expected<'a, T>() -> impl Fn(&'a str, T) -> ()
     where
-      T: Nommed + std::fmt::Debug + PartialEq
+      T: Nommed<&'a str, VerboseError<&'a str>> + std::fmt::Debug + PartialEq
   {
     move |input: &str, expected: T| {
       match T::nom(input) {
         Ok((rem, ref res)) if !rem.is_empty() => panic!("Non-empty remaining input {}, parsed out {:?}", rem, res),
         Ok((_, res)) => assert_eq!(res, expected, "Got result {:?} but expected {:?}", res, expected),
-        e => panic!("Problem parsing {} with error: {:?}", input, e)
+        Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => panic!("Problem: {}", convert_error(input, e)),
+        e => panic!("Unknown error: {:?}", e)
       }
     }
+  }
+
+  #[test]
+  fn test_parse_feature_record_from_spec() {
+
+    let expect = assert_nom_to_expected::<FeatureRecord>();
+
+    expect(
+      r#"
+source          1..1000
+                /culture_collection="ATCC:11775"
+                /culture_collection="CECT:515"
+      "#,
+      FeatureRecord {
+        key: "source".to_string(),
+        location: LocOp::Loc(Loc::Local(Local::span(1, 1000))),
+        qualifiers: vec![]
+      }
+    )
+
   }
 
   #[test]
@@ -456,6 +473,11 @@ mod tests {
     expect(
       "123^124",
       LocOp::Loc(Loc::Local(Local::Between(Between(123, 124)))));
+    
+    expect(
+      "join(12..78)",
+      LocOp::Join(vec![
+        LocOp::Loc(Loc::Local(Local::span(12, 78)))]));
     
     expect(
       "join(12..78,134..202)",
