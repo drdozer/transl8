@@ -51,11 +51,11 @@ pub struct FeatureRecord {
   qualifiers: Vec<Qualifier>
 }
 
-impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for FeatureRecord {
-  fn nom(input: &'a str) -> IResult<&'a str, FeatureRecord, E> {
+// impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for FeatureRecord {
+//   fn nom(input: &'a str) -> IResult<&'a str, FeatureRecord, E> {
 
-  }
-}
+//   }
+// }
 
 
 
@@ -371,25 +371,25 @@ mod tests {
     }
   }
 
-  #[test]
-  fn test_parse_feature_record_from_spec() {
+//   #[test]
+//   fn test_parse_feature_record_from_spec() {
 
-    let expect = assert_nom_to_expected::<FeatureRecord>();
+//     let expect = assert_nom_to_expected::<FeatureRecord>();
 
-    expect(
-      r#"
-source          1..1000
-                /culture_collection="ATCC:11775"
-                /culture_collection="CECT:515"
-      "#,
-      FeatureRecord {
-        key: "source".to_string(),
-        location: LocOp::Loc(Loc::Local(Local::span(1, 1000))),
-        qualifiers: vec![]
-      }
-    )
+//     expect(
+//       r#"
+// source          1..1000
+//                 /culture_collection="ATCC:11775"
+//                 /culture_collection="CECT:515"
+//       "#,
+//       FeatureRecord {
+//         key: "source".to_string(),
+//         location: LocOp::Loc(Loc::Local(Local::span(1, 1000))),
+//         qualifiers: vec![]
+//       }
+//     )
 
-  }
+//   }
 
   #[test]
   fn test_parse_qualifiers_from_spec() {

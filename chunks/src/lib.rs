@@ -89,7 +89,7 @@ where
             loop {
                 // an empty buffer - this is (like) starting from the beginning
                 if self.buf.is_empty() {
-                    println!("Extending buffer");
+                    // println!("Extending buffer");
                     match extend_buffer(&mut self.buf, &mut self.reader) {
                         Ok(0) => {
                             // println!("Zero length buffer extension. Assuming EOF");
