@@ -57,16 +57,19 @@ fn main() -> Result<(), io::Error> {
     let ins: Vec<Box<dyn BufRead>> =
         chunks::read_from_files_or_stdin(matches.values_of("seqIn"))?;
 
+    let delim = chunks::Delim::new(b">", false);
     let fasta = FastaFormat::new();
-    for mut in_reader in ins {
-        let mut seq_txt = String::new();
-        in_reader.read_to_string(&mut seq_txt)?;
-        match parse_fastas(&seq_txt) {
-            Ok((_, in_seqs)) => for (i, in_seq) in in_seqs.iter().enumerate() {
-                let fd = FastaDescription::read(&in_seq.descr_line);
-                write_6_phases(&fasta, &fd.identifier.unwrap_or_else(|| i.to_string()), &in_seq.seq, &mut out)?;
-            },
-            Err(e) => println!("Error parsing fasta input:\n{:#?}\n", e)
+    for in_reader in ins {
+        for chunk in chunks::chunks(in_reader, &delim) {
+            let chunk = chunk.expect("Failed to read chunk");
+            let seq_txt = std::str::from_utf8(&chunk).unwrap();
+            match parse_fastas(&seq_txt) {
+                Ok((_, in_seqs)) => for (i, in_seq) in in_seqs.iter().enumerate() {
+                    let fd = FastaDescription::read(&in_seq.descr_line);
+                    write_6_phases(&fasta, &fd.identifier.unwrap_or_else(|| i.to_string()), &in_seq.seq, &mut out)?;
+                },
+                Err(e) => println!("Error parsing fasta input:\n{:#?}\n", e)
+            }
         }
     }
 
