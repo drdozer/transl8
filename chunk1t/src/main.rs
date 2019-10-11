@@ -36,7 +36,7 @@ fn main() -> Result<(), io::Error> {
         .get_matches();
     
     let ins: Vec<Box<dyn BufRead>> =
-        chunks::read_from_files_or_stin(matches.values_of("in"))?;
+        chunks::read_from_files_or_stdin(matches.values_of("in"))?;
     
     let delim = match matches.value_of("type").unwrap() {
         "fasta" => chunks::Delim::new(b">", false),

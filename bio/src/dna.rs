@@ -11,7 +11,8 @@ pub fn complement(n: char) -> char {
         'C' => 'G',
         'G' => 'C',
         'T' => 'A',
-        _ => panic!("Unexpected nucleotide character `{}'", n),
+        _ => 'N', // fixme -- should warn
+        // _ => panic!("Unexpected nucleotide character `{}'", n),
     }
 }
 

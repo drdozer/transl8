@@ -55,7 +55,7 @@ fn main() -> Result<(), io::Error> {
         chunks::write_to_file_or_stdout(matches.value_of("seqOut"))?;
 
     let ins: Vec<Box<dyn BufRead>> =
-        chunks::read_from_files_or_stin(matches.values_of("seqIn"))?;
+        chunks::read_from_files_or_stdin(matches.values_of("seqIn"))?;
 
     let fasta = FastaFormat::new();
     for mut in_reader in ins {
