@@ -19,63 +19,28 @@ impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for u32
 // todo: implement line-wrap parsing
 
 #[derive(Debug)]
-struct Stanza<'a> {
+pub struct Stanza<'a> {
   /// The tanza tag 
-  tag: Option<&'a str>,
-  lines: Vec<&'a str>,
+  pub tag: Option<&'a str>,
+  pub lines: Vec<&'a str>,
 }
 
-
-struct LeadingColumns {
-  tag_columns: usize,
-  merge_tags: bool,
-}
-
-struct LeadingColumnsIterator<'a, TV> {
-  lcols: &'a LeadingColumns,
-  tv_iterator: TV,
-  next: Option<(Option<&'a str>, Option<&'a str>)>
-}
-
-impl <'a, TV> Iterator for LeadingColumnsIterator<'a, TV>
-where TV : Iterator<Item=(Option<&'a str>, Option<&'a str>)> {
-  type Item = Stanza<'a>;
-
-  fn next(&mut self) -> Option<Self::Item> {
-    match self.next {
-      None => None,
-      Some((tag, first_value)) => {
-        let mut values: Vec<&str> = Vec::new();
-        values.extend(first_value);
-        loop {
-          match self.tv_iterator.next() {
-            None => {
-              self.next = None;
-              return Some(Stanza{
-                tag,
-                lines: values
-              })
-            },
-            Some((t, v)) => {
-              if t.is_none() || (self.lcols.merge_tags && t == tag) {
-                values.extend(v);
-                continue;
-              } else {
-                self.next = Some((t, v));
-                return Some(Stanza{
-                  tag,
-                  lines: values
-                })
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+/// Spec for stansas bases upon leading columns containing tags.
+///
+/// The first `tag_columns` characters contain the tag for the stanza.
+/// All remaining columns make up the value(s) for that tag.
+pub struct LeadingColumns {
+  /// Number of columns to reserve for the tag.
+  pub tag_columns: usize,
+  /// When true, if successivel lines have the same tag, merge them into a
+  /// single stanza.
+  pub merge_tags: bool,
 }
 
 impl LeadingColumns {
+  /// Convert an iterator over lines into an iterator over stanzas.
+  /// 
+  /// This takes ownership of the unerlying lines iterator.
   pub fn stanzas<'a, L>(&'a self, lines: L) -> impl Iterator<Item=Stanza<'a>>
   where L: Iterator<Item=&'a str>
   {
@@ -101,6 +66,58 @@ impl LeadingColumns {
     }
   }
 }
+
+
+/// Iterator to support converting an iterator over lines into an iterator over
+/// stanzas. See [LeadingColumns::stanzas].
+struct LeadingColumnsIterator<'a, TV> {
+  lcols: &'a LeadingColumns,
+  tv_iterator: TV,
+  next: Option<(Option<&'a str>, Option<&'a str>)>
+}
+
+impl <'a, TV> Iterator for LeadingColumnsIterator<'a, TV>
+where TV : Iterator<Item=(Option<&'a str>, Option<&'a str>)> {
+  type Item = Stanza<'a>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    match self.next {
+      None => None,
+      Some((tag, first_value)) => {
+        let mut values: Vec<&str> = Vec::new();
+        values.extend(first_value);
+        loop {
+          match self.tv_iterator.next() {
+            None => {
+              // end of input - build and return a stanza, setting next to None
+              self.next = None;
+              return Some(Stanza{
+                tag,
+                lines: values
+              })
+            },
+            Some((t, v)) => {
+              if t.is_none() || (self.lcols.merge_tags && t == tag) {
+                // value extending current values
+                values.extend(v);
+                continue;
+              } else {
+                // hit the start of the next stanza
+                // - store it for next time, and return the stanza
+                self.next = Some((t, v));
+                return Some(Stanza{
+                  tag,
+                  lines: values
+                })
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 
 #[cfg(test)]
 mod test {

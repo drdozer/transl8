@@ -159,7 +159,7 @@ pub fn write_to_file_or_stdout(out: Option<&str>) -> io::Result<Box<dyn Write>> 
     Ok(writer)
 }
 
-pub fn read_from_files_or_stin<'a, I>(ins: Option<I>) -> io::Result<Vec<Box<dyn BufRead>>>
+pub fn read_from_files_or_stdin<'a, I>(ins: Option<I>) -> io::Result<Vec<Box<dyn BufRead>>>
 where
     I: Iterator<Item = &'a str>
 {

@@ -4,6 +4,7 @@ members = [
     "bio",
     "chunks",
     "chunk1t",
+    "embl2fasta",
     "seiv3",
     "transl8",
 ]
