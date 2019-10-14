@@ -8,6 +8,7 @@ extern crate clap;
 use clap::{
     Arg,
     App,
+    crate_name,
     crate_version,
     crate_authors,
 };
@@ -24,7 +25,7 @@ use chunks;
 
 
 fn main() {
-    let matches = App::new("embl2fasta")
+    let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
         .about("Converts embl files to fasta files")
@@ -84,7 +85,7 @@ fn main() {
                         .filter(|&t| t.chars().all(|c| c.is_ascii_alphabetic()))))
                 .collect::<String>();
             // println!("{:?}", seq);
-            if(!seq.is_empty()) {
+            if !seq.is_empty() {
                 let descr_line = FastaRecord::descr_line(id, descr.as_ref().map(String::as_str));
                 // println!("ID line text: {}", descr_line);
                 let fasta_record = FastaRecord { descr_line, seq };
