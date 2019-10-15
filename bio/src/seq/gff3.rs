@@ -16,8 +16,9 @@ use std::str::FromStr;
 // of a parse.
 //
 // Howeer, it may make sense to refactor this.
+#[derive(Debug)]
 pub struct GffRecord {
-  pub seqid: String,
+  pub seq_id: String,
   pub source: String,
   pub feature_type: String,
   pub start: OneBased,
@@ -35,7 +36,7 @@ impl FromStr for GffRecord {
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     let mut columns = s.trim().split("\t");
 
-    let seqid = columns.next()
+    let seq_id = columns.next()
       .ok_or(GffParseError::new(format!("No seqID column in {}", s)))
       .map(ToString::to_string)?;
 
@@ -71,13 +72,18 @@ impl FromStr for GffRecord {
       .ok_or(GffParseError::new(format!("No attributes column in {}", s)))
       .and_then(FromStr::from_str)?;
 
-    Ok(GffRecord { seqid, source, feature_type, start, end, score, strand, phase, attributes })
+    Ok(GffRecord { seq_id, source, feature_type, start, end, score, strand, phase, attributes })
   }
 }
 
 
 // Index counted from 1 rather than 0
+#[derive(Debug, PartialEq)]
 pub struct OneBased(u64);
+impl OneBased {
+  pub fn new(at: u64) -> OneBased { OneBased(at) }
+  pub fn at(&self) -> u64 { self.0 }
+}
 
 impl FromStr for OneBased {
   type Err = GffParseError;
@@ -87,6 +93,7 @@ impl FromStr for OneBased {
   }
 }
 
+#[derive(Debug)]
 pub struct Score(Option<f64>);
 
 impl FromStr for Score {
@@ -103,6 +110,7 @@ impl FromStr for Score {
 
 
 
+#[derive(Debug)]
 pub enum Strand {
   Positive,
   Negative,
@@ -125,6 +133,7 @@ impl FromStr for Strand {
 }
 
 // 0, 1, 2
+#[derive(Debug)]
 pub struct Phase(Option<u8>);
 
 impl FromStr for Phase {
@@ -141,6 +150,7 @@ impl FromStr for Phase {
 
 
 
+#[derive(Debug)]
 pub struct Attributes(HashMap<String, String>);
 
 impl FromStr for Attributes {

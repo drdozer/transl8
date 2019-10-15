@@ -1,8 +1,5 @@
 
-use std::io::{
-    self,
-    BufRead,
-};
+use std::io;
 use std::str::FromStr;
 use std::fs;
 
@@ -16,11 +13,11 @@ use clap::{
 };
 
 use bio::seq::fasta::*;
-use bio::seq::gff3::GffRecord;
+use bio::seq::gff3::{GffRecord, OneBased};
 
 use chunks;
 
-fn main() {
+fn main() -> Result<(), io::Error> {
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
@@ -57,12 +54,55 @@ fn main() {
         let gff_file_name = matches.value_of("gff")
             .expect("Must provide a gff file");
         let txt = fs::read_to_string(gff_file_name).expect("Could not read the gff file");
-        let lns = txt.lines().filter(|l| !l.starts_with("#")).map(|l| FromStr::from_str(l).expect("Failed to parse gff line")).collect();
-        lns
+        txt.lines().filter(|l| !l.starts_with("#"))
+            .map(|l| FromStr::from_str(l)
+            .expect("Failed to parse gff line"))
+            .collect()
     };
 
 
-
+    let delim = chunks::Delim::new(b">", false);
     let fasta = FastaFormat::new();
+    for in_reader in ins {
+        for chunk in chunks::chunks(in_reader, &delim) {
+            let chunk = chunk.expect("Failed to read chunk");
+            let chunk_text = std::str::from_utf8(&chunk).unwrap();
+            match parse_fastas(&chunk_text) {
+                Ok((_, in_seqs)) => for in_seq in in_seqs {
+                    let fd = FastaDescription::read(&in_seq.descr_line);
+                    match fd.identifier {
+                        Some(id) => {
+                            // println!("Got fasta with id {:?}", id);
+                            let clps = gff.iter()
+                                .filter(|g| g.seq_id == id && g.start == OneBased::new(1))
+                                .map(|g| g.end.at())
+                                .max();
+                            match clps {
+                                Some(clip) => {
+                                    // println!("Got fasta entry with id {} and clip {}. Writing unchanged.", id, clip);
+                                    let id = format!("{}_clipped_{}", id, clip);
+                                    let descr_line = FastaRecord::descr_line(Some(&id), fd.description.as_ref().map(String::as_ref));
+                                    let clipped_seq = in_seq.seq[(clip as usize)..].to_string();
+                                    let clipped_rec = FastaRecord { descr_line, seq: clipped_seq };
+                                    // in_seq.write(&fasta, &mut out)?;
+                                    clipped_rec.write(&fasta, &mut out)?;
+                                }
+                                None => {
+                                    // println!("Got fasta entry with id {} but no clip. Writing unchanged.", id);
+                                    in_seq.write(&fasta, &mut out)?;
+                                }
+                            }
+                        }
+                        None => {
+                            // println!("Got fasta entry with no identifier. Writing unchanged.");
+                            in_seq.write(&fasta, &mut out)?;
+                        }
+                    }
+                },
+                Err(e) => println!("Error parsing fasta input:\n{:#?}\n", e)
+            }
+        }
+    }
 
+    Ok(())
 }

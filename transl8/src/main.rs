@@ -62,8 +62,8 @@ fn main() -> Result<(), io::Error> {
     for in_reader in ins {
         for chunk in chunks::chunks(in_reader, &delim) {
             let chunk = chunk.expect("Failed to read chunk");
-            let seq_txt = std::str::from_utf8(&chunk).unwrap();
-            match parse_fastas(&seq_txt) {
+            let chunk_text = std::str::from_utf8(&chunk).unwrap();
+            match parse_fastas(&chunk_text) {
                 Ok((_, in_seqs)) => for (i, in_seq) in in_seqs.iter().enumerate() {
                     let fd = FastaDescription::read(&in_seq.descr_line);
                     write_6_phases(&fasta, &fd.identifier.unwrap_or_else(|| i.to_string()), &in_seq.seq, &mut out)?;
