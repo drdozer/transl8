@@ -1,0 +1,2 @@
+#!/bin/bash
+find target/release/ -maxdepth 1 -executable -type f | xargs -I % cp % ~/opt/transl8/
