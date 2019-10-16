@@ -4,7 +4,6 @@ use std::io;
 use std::str::FromStr;
 use std::fs;
 
-extern crate clap;
 use clap::{
     Arg,
     App,
