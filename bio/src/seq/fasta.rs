@@ -63,8 +63,8 @@ pub struct FastaRecord {
 impl FastaRecord {
   pub fn descr_line(id: Option<&str>, descr: Option<&str>) -> String {
     let mut dl = String::new();
-    for id in id { dl.push_str(id) }
-    for de in descr { dl.push(' '); dl.push_str(de) }
+    if let Some(id) = id { dl.push_str(id) }
+    if let Some(de) = descr { dl.push(' '); dl.push_str(de) }
 
     dl
   }

@@ -34,42 +34,42 @@ impl FromStr for GffRecord {
   type Err = GffParseError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    let mut columns = s.trim().split("\t");
+    let mut columns = s.trim().split('\t');
 
     let seq_id = columns.next()
-      .ok_or(GffParseError::new(format!("No seqID column in {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No seqID column in {}", s)))
       .map(ToString::to_string)?;
 
     let source = columns.next()
-      .ok_or(GffParseError::new(format!("No source columnin {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No source columnin {}", s)))
       .map(ToString::to_string)?;
 
     let feature_type = columns.next()
-      .ok_or(GffParseError::new(format!("No type column in {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No type column in {}", s)))
       .map(ToString::to_string)?;
 
     let start = columns.next()
-      .ok_or(GffParseError::new(format!("No start column in {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No start column in {}", s)))
       .and_then(FromStr::from_str)?;
 
     let end = columns.next()
-      .ok_or(GffParseError::new(format!("No seqID column in {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No seqID column in {}", s)))
       .and_then(FromStr::from_str)?;
 
     let score = columns.next()
-      .ok_or(GffParseError::new(format!("No score column in {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No score column in {}", s)))
       .and_then(FromStr::from_str)?;
 
     let strand = columns.next()
-      .ok_or(GffParseError::new(format!("No strand column in {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No strand column in {}", s)))
       .and_then(FromStr::from_str)?;
 
     let phase = columns.next()
-      .ok_or(GffParseError::new(format!("No phase column in {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No phase column in {}", s)))
       .and_then(FromStr::from_str)?;
 
     let attributes = columns.next()
-      .ok_or(GffParseError::new(format!("No attributes column in {}", s)))
+      .ok_or_else(|| GffParseError::new(format!("No attributes column in {}", s)))
       .and_then(FromStr::from_str)?;
 
     Ok(GffRecord { seq_id, source, feature_type, start, end, score, strand, phase, attributes })
@@ -157,11 +157,11 @@ impl FromStr for Attributes {
   type Err = GffParseError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    let tvs: HashMap<String, String> = s.split(";").flat_map(|p| {
-      let mut tv = p.split("=");
+    let tvs: HashMap<String, String> = s.split(';').flat_map(|p| {
+      let mut tv = p.split('=');
       match (tv.next(), tv.next()) {
         (Some(t), Some(v)) => Ok((t.to_string(), v.to_string())),
-        _ => return Err(
+        _ => Err(
           GffParseError::new(
             format!("Expected <tag>=<value> but got: {}", p))),
       }

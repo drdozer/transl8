@@ -60,7 +60,7 @@ fn main() -> Result<(), io::Error> {
         let gff_file_name = matches.value_of("gff")
             .expect("Must provide a gff file");
         let txt = fs::read_to_string(gff_file_name).expect("Could not read the gff file");
-        txt.lines().filter(|l| !l.starts_with("#"))
+        txt.lines().filter(|l| !l.starts_with('#'))
             .map(|l| FromStr::from_str(l)
             .expect("Failed to parse gff line"))
             .collect()

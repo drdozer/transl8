@@ -238,7 +238,7 @@ pub enum Local {
 }
 
 impl Local {
-  fn span(from: u32, to: u32) -> Local {
+  pub fn span(from: u32, to: u32) -> Local {
     Local::Span {
       from: Position::Point(Point(from)),
       to: Position::Point(Point(to)),
@@ -248,28 +248,28 @@ impl Local {
 }
 
 impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for Local {
-fn nom(input: &'a str) -> IResult<&'a str, Local, E> {
-  let parse_within = map(
-    tuple((Point::nom, tag("."), Point::nom)),
-    |(from, _, to)| Local::Within { from, to });
+  fn nom(input: &'a str) -> IResult<&'a str, Local, E> {
+    let parse_within = map(
+      tuple((Point::nom, tag("."), Point::nom)),
+      |(from, _, to)| Local::Within { from, to });
 
-  let parse_span = map(
-    tuple((
-      opt(tag("<")), Position::nom, tag(".."), opt(tag(">")), Position::nom)),
-    |(before_from, from, _, after_to, to)| Local::Span {
-      from,
-      to,
-      before_from: before_from.is_some(),
-      after_to: after_to.is_some() }
-  );
+    let parse_span = map(
+      tuple((
+        opt(tag("<")), Position::nom, tag(".."), opt(tag(">")), Position::nom)),
+      |(before_from, from, _, after_to, to)| Local::Span {
+        from,
+        to,
+        before_from: before_from.is_some(),
+        after_to: after_to.is_some() }
+    );
 
-  alt((
-    map(Between::nom, Local::Between),
-    parse_within,
-    parse_span,
-    map(Point::nom, Local::Point), // must do this last as it's a prefix of the others
-  ))(input)
-}
+    alt((
+      map(Between::nom, Local::Between),
+      parse_within,
+      parse_span,
+      map(Point::nom, Local::Point), // must do this last as it's a prefix of the others
+    ))(input)
+  }
 }
 
 

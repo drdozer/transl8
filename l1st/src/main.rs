@@ -6,7 +6,6 @@ use clap::{
     crate_authors,
 };
 
-use std::io::Write;
 use std::io;
 
 use bio::seq::fasta::*;
@@ -48,11 +47,8 @@ fn main() -> Result<(), io::Error> {
             match parse_fastas(&chunk_text) {
                 Ok((_, in_seqs)) => for in_seq in in_seqs {
                     let fd = FastaDescription::read(&in_seq.descr_line);
-                    match fd.identifier {
-                        Some(id) => {
-                            writeln!(out, "{}", id)?
-                        }
-                        None => ()
+                    if let Some(id) = fd.identifier {
+                        writeln!(out, "{}", id)?
                     }
                 },
                 Err(e) => println!("Error parsing fasta input:\n{:#?}\n", e)

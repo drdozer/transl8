@@ -59,14 +59,14 @@ fn main() {
             // println!("{:?}", stanzas);
             let id = stanzas.iter()
                 .filter(|s| s.tag == Some("ID"))
-                .flat_map(|s| s.lines.iter().flat_map(|l| l.split(";")))
+                .flat_map(|s| s.lines.iter().flat_map(|l| l.split(';')))
                 .next();
             // println!("ID line:");
             // println!("{:?}", id);
             let descr = stanzas.iter()
                 .filter(|s| s.tag == Some("DE"))
                 .map(|s| s.lines.iter()
-                    .map(|&l| l)
+                    .copied()
                     .collect::<String>()) // fixme: this may abolish whitespace between lines
                 .next();
             // println!("Sequence:");
