@@ -1,10 +1,3 @@
-
-use std::io::{
-    self,
-    BufRead,
-};
-
-extern crate clap;
 use clap::{
     Arg,
     App,
