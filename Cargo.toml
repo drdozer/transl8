@@ -5,6 +5,7 @@ members = [
     "chunks",
     "chunk1t",
     "embl2fasta",
+    "l1st",
     "seiv3",
     "transl8",
     "tr1m",
