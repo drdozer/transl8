@@ -1,4 +1,5 @@
 
+use std::io::Write;
 use std::io;
 use std::str::FromStr;
 use std::fs;
@@ -41,6 +42,12 @@ fn main() -> Result<(), io::Error> {
             .multiple(false)
             .takes_value(true)
             .help("GFF3 file containing regions to clip"))
+        .arg(Arg::with_name("mapping")
+            .short("m")
+            .long("mapping")
+            .multiple(false)
+            .takes_value(true)
+            .help("Name of mapping file documenting the raw and clipped identifiers. Only generates mapping file if supplied."))
         .get_matches();
 
     let mut out =
@@ -59,6 +66,12 @@ fn main() -> Result<(), io::Error> {
             .expect("Failed to parse gff line"))
             .collect()
     };
+
+    let mut mapping = matches.value_of("mapping").map(|m| fs::File::create(m)
+        .expect("Problem opening mapping file for writing"));
+
+    let mut write_mapping = move |from: &str, to: &str| mapping.iter_mut().for_each(
+        |f| writeln!(f, "{}\t{}", from, to).expect("Unable to write mapping pair to file"));
 
 
     let delim = chunks::Delim::new(b">", false);
@@ -80,15 +93,17 @@ fn main() -> Result<(), io::Error> {
                             match clps {
                                 Some(clip) => {
                                     // println!("Got fasta entry with id {} and clip {}. Writing unchanged.", id, clip);
-                                    let id = format!("{}_clipped_{}", id, clip);
-                                    let descr_line = FastaRecord::descr_line(Some(&id), fd.description.as_ref().map(String::as_ref));
+                                    let clipped_id = format!("{}_clipped_{}", id, clip);
+                                    let descr_line = FastaRecord::descr_line(Some(&clipped_id), fd.description.as_ref().map(String::as_ref));
                                     let clipped_seq = in_seq.seq[(clip as usize)..].to_string();
                                     let clipped_rec = FastaRecord { descr_line, seq: clipped_seq };
                                     // in_seq.write(&fasta, &mut out)?;
+                                    write_mapping(&id, &clipped_id);
                                     clipped_rec.write(&fasta, &mut out)?;
                                 }
                                 None => {
                                     // println!("Got fasta entry with id {} but no clip. Writing unchanged.", id);
+                                    write_mapping(&id, &id);
                                     in_seq.write(&fasta, &mut out)?;
                                 }
                             }
