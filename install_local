@@ -1,2 +1,4 @@
 #!/bin/bash
+cargo build --release
+mkdir -p ~/opt/transl8
 find target/release/ -maxdepth 1 -executable -type f | xargs -I % cp % ~/opt/transl8/
