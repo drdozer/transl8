@@ -68,7 +68,7 @@ impl FastaRecord {
 
     dl
   }
-  
+
   pub fn write<W : io::Write>(&self, format: &FastaFormat, out: &mut W) -> Result<(), io::Error> {
     let ll = format.line_length;
 
@@ -116,16 +116,24 @@ fn parse_fasta_header(input: &str) -> IResult<&str, String> {
   )(input)
 }
 
+fn parse_seq_block(input: &str) -> IResult<&str, &str> {
+  take_while(|c| !(c == '>' || c == ' ' || c == '\t' || c == '\r' || c == '\n'))(input)
+}
+
+fn parse_seq_blocks(input: &str) -> IResult<&str, Vec<&str>> {
+  separated_list(
+    space1,
+    parse_seq_block
+  )(input)
+}
+
 fn parse_seq_line(input: &str) -> IResult<&str, Vec<&str>> {
   context(
     "sequence_line",
     preceded(
       space0,
       terminated(
-        separated_list(
-          space1,
-          take_while(|c| !(c == '>' || c == ' ' || c == '\t' || c == '\r' || c == '\n'))
-        ),
+        parse_seq_blocks,
         opt(line_ending)
       )
     )
@@ -216,12 +224,77 @@ mod tests {
   }
 
   #[test]
+  fn test_parse_fasta_header_with_seq() {
+    let input = ">id descr\nagct";
+    let output = "id descr".to_string();
+    let rem = "agct";
+    assert_eq!(parse_fasta_header(input), Ok((rem, output)));
+  }
+
+  #[test]
+  fn test_parse_seq_block_single_block() {
+    let input = "agct";
+    let output = "agct";
+    let rem = "";
+    assert_eq!(parse_seq_block(input), Ok((rem, output)))
+  }
+
+  #[test]
+  fn test_parse_seq_block_two_blocks() {
+    let input = "agct ttag";
+    let output = "agct";
+    let rem = " ttag";
+    assert_eq!(parse_seq_block(input), Ok((rem, output)))
+  }
+
+  #[test]
+  fn test_parse_seq_blocks_single_block() {
+    let input = "agct";
+    let output = vec!("agct");
+    let rem = "";
+    assert_eq!(parse_seq_blocks(input), Ok((rem, output)))
+  }
+
+  #[test]
+  fn test_parse_seq_blocks_two_blocks() {
+    let input = "agct ttag";
+    let output = vec!("agct", "ttag");
+    let rem = "";
+    assert_eq!(parse_seq_blocks(input), Ok((rem, output)))
+  }
+
+  #[test]
+  fn test_parse_seq_blocks_two_blocks_with_newline() {
+    let input = "agct ttag\n";
+    let output = vec!("agct", "ttag");
+    let rem = "\n";
+    assert_eq!(parse_seq_blocks(input), Ok((rem, output)))
+  }
+
+  #[test]
   fn test_parse_seq_line_with_line_end() {
     let input = "atgcatgcgtcgtatcgta\n";
     let output = vec!["atgcatgcgtcgtatcgta"];
     let rem = "";
     assert_eq!(parse_seq_line(input), Ok((rem, output)));
   }
+
+  #[test]
+  fn test_parse_seq_line_next_record() {
+    let input = "atgcatgcgtcgtatcgta\n>";
+    let output = vec!["atgcatgcgtcgtatcgta"];
+    let rem = ">";
+    assert_eq!(parse_seq_line(input), Ok((rem, output)));
+  }
+
+  #[test]
+  fn test_parse_seq_line_leading_space_next_record() {
+    let input = " atgcatgcgtcgtatcgta\n>";
+    let output = vec!["atgcatgcgtcgtatcgta"];
+    let rem = ">";
+    assert_eq!(parse_seq_line(input), Ok((rem, output)));
+  }
+
 
   #[test]
   fn test_parse_seq_line_without_line_end() {
@@ -236,6 +309,16 @@ mod tests {
     let input = "atgcatgcgtcgtatcgta\ngcgtcgatctgca\n";
     let output = vec![vec!["atgcatgcgtcgtatcgta"], vec!["gcgtcgatctgca"]];
     let rem = "";
+    assert_eq!(parse_seq_lines(input), Ok((rem, output)));
+  }
+
+  #[test]
+  fn test_parse_seq_lines_without_line_end() {
+    let input = "atgcatgcgtcgtatcgta";
+    let output_0 = vec!["atgcatgcgtcgtatcgta"];
+    let output = vec![vec!["atgcatgcgtcgtatcgta"]];
+    let rem = "";
+    assert_eq!(parse_seq_line(input), Ok((rem, output_0)));
     assert_eq!(parse_seq_lines(input), Ok((rem, output)));
   }
 

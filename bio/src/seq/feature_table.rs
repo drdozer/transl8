@@ -1,7 +1,7 @@
 //! # Feature Table
 //!
 //! Data model and parsers for the DDBJ/ENA/GenBank Feature Table.
-//! 
+//!
 //! See: http://www.insdc.org/files/feature_table.html
 
 use nom::{
@@ -18,7 +18,7 @@ use nom::{
   character::{
     is_alphanumeric,
   },
-  combinator::{ 
+  combinator::{
     cut,
     map,
     opt,
@@ -94,7 +94,7 @@ impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for FtString {
   let misc = "_-'*";
 
   let ft_char = {
-    move |c: char| 
+    move |c: char|
       uc.contains(&c) ||
       lc.contains(&c) ||
       di.contains(&c) ||
@@ -106,7 +106,7 @@ impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for FtString {
       uc.contains(&c) ||
       lc.contains(&c)
   };
-  
+
   map(
     verify(
       take_while_m_n(1, 20, ft_char),
@@ -153,16 +153,16 @@ fn nom(input: &'a str) -> IResult<&'a str, QualifierValue, E> {
       tuple((tag("\""), take_while(|c| c != '"'), tag("\""))),
       |(_, v, _): (&str, &str, &str)| QualifierValue::QuotedText(v.to_string()));
 
-  let parse_vocabulary_term = 
+  let parse_vocabulary_term =
     map(
       FtString::nom,
       QualifierValue::VocabularyTerm);
 
-  let parse_reference_number = 
+  let parse_reference_number =
     map(
       tuple((tag("["), u32::nom, tag("]"))),
       |(_, d, _)| QualifierValue::ReferenceNumber(d));
-  
+
   alt((
     parse_quoted_text,
     parse_vocabulary_term,
@@ -194,7 +194,7 @@ impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for Point {
 /// A position between two bases in a sequence.
 /// pub
 /// For example, 122^123. The locations must be consecutive.
-/// 
+///
 /// For example, 100^1 for a circular sequence of length 100.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Between(u32, u32);
@@ -308,8 +308,8 @@ pub enum LocOp {
 
 impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for LocOp {
 fn nom(input: &'a str) -> IResult<&'a str, LocOp, E> {
-  
-  let parse_complement = 
+
+  let parse_complement =
     map(
       tuple((
         tag("complement("),
@@ -401,13 +401,13 @@ mod tests {
       Qualifier {
         name: FtString("pseudo".to_string()),
         value: None });
- 
+
     expect(
       "/citation=[1]",
       Qualifier {
         name: FtString("citation".to_string()),
         value: Some(QualifierValue::ReferenceNumber(1)) });
- 
+
     expect(
       "/gene=\"arsC\"",
       Qualifier {
@@ -447,7 +447,7 @@ mod tests {
         before_from: true,
         after_to: false
       })));
-    
+
     expect(
       "<1..888",
       LocOp::Loc(Loc::Local(Local::Span {
@@ -473,12 +473,12 @@ mod tests {
     expect(
       "123^124",
       LocOp::Loc(Loc::Local(Local::Between(Between(123, 124)))));
-    
+
     expect(
       "join(12..78)",
       LocOp::Join(vec![
         LocOp::Loc(Loc::Local(Local::span(12, 78)))]));
-    
+
     expect(
       "join(12..78,134..202)",
       LocOp::Join(vec![
@@ -488,14 +488,14 @@ mod tests {
     expect(
       "complement(34..126)",
       LocOp::Complement(Box::new(LocOp::Loc(Loc::Local(Local::span(34, 126))))));
-    
+
     expect(
       "complement(join(2691..4571,4918..5163))",
       LocOp::Complement(Box::new(LocOp::Join(vec![
         LocOp::Loc(Loc::Local(Local::span(2691, 4571))),
         LocOp::Loc(Loc::Local(Local::span(4918, 5163)))
       ]))));
-    
+
     expect(
       "join(complement(4918..5163),complement(2691..4571))",
       LocOp::Join(vec![
@@ -506,7 +506,7 @@ mod tests {
     expect(
       "J00194.1:100..202",
       LocOp::Loc(Loc::Remote{ within: String::from("J00194.1"), at: Local::span(100, 202) }));
-    
+
     expect(
       "join(1..100,J00194.1:100..202)",
       LocOp::Join(vec![

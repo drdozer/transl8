@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use nom::{
     IResult,
     error::{ParseError},
@@ -8,10 +10,10 @@ pub trait Nommed<I, E> where Self: Sized {
   fn nom(input: I) -> IResult<I, Self, E>;
 }
 
-impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for u32 
+impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for u32
 {
   fn nom(input: &'a str) -> IResult<&'a str, u32, E> {
-    map_res(digit1, |d: &'a str| d.parse::<u32>())(input)
+    map_res(digit1, |d: &'a str| u32::from_str(d))(input)
   }
 }
 
@@ -20,7 +22,7 @@ impl <'a, E : ParseError<&'a str>> Nommed<&'a str, E> for u32
 
 #[derive(Debug)]
 pub struct Stanza<'a> {
-  /// The tanza tag 
+  /// The tanza tag
   pub tag: Option<&'a str>,
   pub lines: Vec<&'a str>,
 }
@@ -39,7 +41,7 @@ pub struct LeadingColumns {
 
 impl LeadingColumns {
   /// Convert an iterator over lines into an iterator over stanzas.
-  /// 
+  ///
   /// This takes ownership of the unerlying lines iterator.
   pub fn stanzas<'a, L>(&'a self, lines: L) -> impl Iterator<Item=Stanza<'a>>
   where L: Iterator<Item=&'a str>

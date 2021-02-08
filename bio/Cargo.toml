@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "*"
-nom = "*"
+nom = "5.0.1"
